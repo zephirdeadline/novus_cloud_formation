@@ -1,0 +1,263 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 
+  "Novus Template yaml version"
+Parameters:
+  DBName:
+    Default: MyDatabase
+    Description: MySQL database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+  DBUser:
+    NoEcho: 'true'
+    Description: Username for MySQL database access
+    Default: novusdb
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+  DBPassword:
+    NoEcho: 'true'
+    Default: password
+    Description: Password for MySQL database access (is password)
+    Type: String
+    MinLength: '1'
+    MaxLength: '41'
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: must contain only alphanumeric characters.
+  DBRootPassword:
+    Default: password
+    NoEcho: 'true'
+    Description: Root password for MySQL (password) too
+    Type: String
+    MinLength: '1'
+    MaxLength: '41'
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: must contain only alphanumeric characters.
+
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+    ConstraintDescription: must be a valid EC2 instance type.
+  
+  VPCID:
+    Description: vpc
+    Type: 'AWS::EC2::VPC::Id'
+
+  SSHLocation:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+Mappings:
+  AWSInstanceType2Arch:
+    t2.micro:
+      Arch: HVM64
+    
+
+  AWSInstanceType2NATArch:
+    t2.micro:
+      Arch: NATHVM64
+
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: ami-0ff8a91507f77f867
+      HVMG2: ami-0a584ac55a7631c0c
+
+
+
+
+
+Resources:
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to client host
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: 0.0.0.0/0
+
+      - IpProtocol: tcp
+        CidrIp: 0.0.0.0/0
+        FromPort: '22'
+        ToPort: '22'
+     
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          InstallAndRun:
+          - Install
+          - Configure
+        Install:
+          packages:
+            yum:
+              mysql: []
+              mysql-server: []
+              mysql-libs: []
+              nginx: []
+              python-devel: []
+              uwsgi: []
+          files:
+            "/usr/share/nginx/html/index.html":
+              content: "																																			\
+                <html>																																				\
+                <head>																																				\
+                  <title>AWS CloudFormation PHP Sample</title>																\
+                  <meta http-equiv='Content-Type' content='text/html; charset=ISO-8859-1'>		\
+                </head>																																				\
+                <body>																																				\
+                  <h1>Hello world</h1>																												\
+                </body>																																				\
+                </html>"
+              mode: '000777'
+              owner: root
+              group: root
+            "/tmp/nginx/default.conf":
+              content: "																															\
+                server { 																															\
+                  listen 80; 																													\
+                  root /usr/share/nginx/html; 																				\
+                  charset utf-8;	 																										\
+                  location / { 																												\
+                    try_files $uri $uri/ =404; 																				\
+                  } 																					 												\
+                }"
+              mode: '000755'
+              owner: root
+              group: root
+            "/tmp/nginx/root.conf":
+              content: "																				\
+                user nginx;                                 		\
+                worker_processes auto; 													\
+                error_log /var/log/nginx/error.log;							\
+                pid /var/run/nginx.pid;													\
+                include /usr/share/nginx/modules/*.conf;				\
+                events { 																				\
+                  worker_connections 1024; 											\
+                } 																							\
+                http { 																					\
+                  access_log  /var/log/nginx/access.log; 				\
+                  sendfile            on; 											\
+                  tcp_nopush          on; 											\
+                  tcp_nodelay         on; 											\
+                  keepalive_timeout   65; 											\
+                  types_hash_max_size 2048; 										\
+                  include             /etc/nginx/mime.types; 		\
+                  default_type        application/octet-stream; \
+                  include /etc/nginx/conf.d/*.conf; 						\
+                  index   index.html index.htm; 								\
+                } "
+              mode: '000644'
+              owner: root
+              group: root
+            "/tmp/setup.mysql":
+              content:
+                Fn::Sub: 
+                  - CREATE DATABASE ${DBName};
+                    GRANT ALL ON ${DBName} .* TO '${DBUser}' @localhost IDENTIFIED BY '${DBPassword}';  
+                  - { DBName: !Ref DBName, DBUser: !Ref DBUser, DBPassword: !Ref DBPassword}
+              mode: '000400'
+              owner: root
+              group: root
+            "/etc/cfn/cfn-hup.conf":
+              content: 
+                Fn::Sub: 
+                - "[main]               \
+                  stack=Ref: ${StackId} \
+                  region=Ref: ${Region}"
+                - { Region: !Ref "AWS::Region", StackId: !Ref "AWS::StackId" }
+              mode: '000400'
+              owner: root
+              group: root
+            "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+              content:
+                Fn::Sub: 
+                  - "[cfn-auto-reloader-hook]                                               \
+                    triggers=post.update                                                    \
+                    path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init     \
+                    action=/opt/aws/bin/cfn-init -v                                         \
+                    --stack ${StackName}                                                    \
+                    --resource WebServerInstance                                            \
+                    --configsets InstallAndRun                                              \
+                    --region ${Region}                                                      \
+                    runas=root"
+                  - { Region: !Ref "AWS::Region", StackName: !Ref "AWS::StackName" }
+              mode: '000400'
+              owner: root
+              group: root
+          services:
+            sysvinit:
+              mysqld:
+                enabled: 'true'
+                ensureRunning: 'false'
+              uwsgi:
+                enabled: 'true'
+                ensureRunning: 'false'
+              nginx:
+                enabled: 'true'
+                ensureRunning: 'false'
+                files:
+                  - "/etc/nginx/conf.d/default.conf"
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'false'
+                files:
+                  - "/etc/cfn/cfn-hup.conf"
+                  - "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+        Configure:
+          commands: {}
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
+
+
+Outputs:
+  InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value: !Ref EC2Instance
+  AZ:
+    Description: Availability Zone of the newly created EC2 instance
+    Value: !GetAtt 
+      - EC2Instance
+      - AvailabilityZone
+  PublicDNS:
+    Description: Public DNSName of the newly created EC2 instance
+    Value: !GetAtt 
+      - EC2Instance
+      - PublicDnsName
+  PublicIP:
+    Description: Public IP address of the newly created EC2 instance
+    Value: !GetAtt 
+      - EC2Instance
+      - PublicIp
+
+# autoscaling, loadbalancer
