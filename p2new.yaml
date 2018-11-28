@@ -51,20 +51,7 @@ Parameters:
     AllowedValues:
       - t2.micro
     ConstraintDescription: must be a valid EC2 instance type.
-  
-  VPCID:
-    Description: vpc
-    Type: 'AWS::EC2::VPC::Id'
-
-  SSHLocation:
-    Description: The IP address range that can be used to SSH to the EC2 instances
-    Type: String
-    MinLength: '9'
-    MaxLength: '18'
-    Default: 0.0.0.0/0
-    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
-    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
-
+    
 Mappings:
   AWSInstanceType2Arch:
     t2.micro:
@@ -194,10 +181,10 @@ Resources:
                 Fn::Sub: 
                   - "[cfn-auto-reloader-hook]                                               \
                     triggers=post.update                                                    \
-                    path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init     \
+                    path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init     \
                     action=/opt/aws/bin/cfn-init -v                                         \
                     --stack ${StackName}                                                    \
-                    --resource WebServerInstance                                            \
+                    --resource EC2Instance                                            \
                     --configsets InstallAndRun                                              \
                     --region ${Region}                                                      \
                     runas=root"
@@ -226,6 +213,8 @@ Resources:
                   - "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
         Configure:
           commands: {}
+
+          
     Properties:
       InstanceType: !Ref InstanceType
       SecurityGroups:
