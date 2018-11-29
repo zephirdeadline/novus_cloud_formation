@@ -91,8 +91,16 @@
 								"mysql": [],
 								"mysql-server": [],
 								"mysql-libs": [],
-								"nginx": []
-							}
+								"nginx": [],
+                "python36": [],
+                "python36-devel": [],
+                "python36-libs": [],
+                "python36-tools": []
+                
+							},
+              "pip-3.6": {
+                "uwsgi": []
+              }
 						},
 						"files": {
 							"/usr/share/nginx/html/index.html": {
@@ -271,6 +279,10 @@
 										"/etc/cfn/cfn-hup.conf",
 										"/etc/cfn/hooks.d/cfn-auto-reloader.conf"
 									]
+								},
+                "uwsgi": {
+									"enabled": "true",
+									"ensureRunning": "true"
 								}
 							}
 						}
@@ -345,7 +357,8 @@
 								{
 									"Ref": "AWS::Region"
 								},
-								"\n"
+								"\n",
+                "pip install uwsgi\n"
 							]
 						]
 					}
@@ -365,16 +378,19 @@
 					{
 						"IpProtocol": "tcp",
 						"FromPort": "80",
-						"ToPort": "80"
+						"ToPort": "80",
+						"CidrIp": "0.0.0.0/0"
 					},
 					{
 						"IpProtocol": "tcp",
 						"FromPort": "22",
-						"ToPort": "22"
+						"ToPort": "22",
+						"CidrIp": "0.0.0.0/0"
 					}
 				]
 			}
 		}
+    
 	},
 	"Outputs": {
 		"WebsiteURL": {
