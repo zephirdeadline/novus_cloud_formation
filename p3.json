@@ -75,6 +75,20 @@
   },
   
 	"Resources": {
+    "MyDB" : {
+      "Type" : "AWS::RDS::DBInstance",
+      "Properties" : {
+         "DBName" : { "Ref" : "DBName" },
+         "AllocatedStorage" : { "Ref" : "DBAllocatedStorage" },
+         "DBInstanceClass" : { "Ref" : "DBInstanceClass" },
+         "Engine" : "MySQL",
+         "EngineVersion" : "5.6.13",
+         "MasterUsername" : { "Ref" : "DBUser" },
+         "MasterUserPassword" : { "Ref" : "DBPassword" },
+         "Tags" : [ { "Key" : "Name", "Value" : "My SQL Database" } ]
+      },
+      "DeletionPolicy" : "Snapshot"
+    }, 
 		"WebServerInstance": {
 			"Type": "AWS::EC2::Instance",
 			"Metadata": {
@@ -89,9 +103,6 @@
 						"packages": {
 							"yum": {
                 "git": [],
-								"mysql": [],
-								"mysql-server": [],
-								"mysql-libs": [],
 								"nginx": [],
                 "python36": [],
                 "python36-devel": [],
@@ -139,10 +150,6 @@
 						},
 						"services": {
 							"sysvinit": {
-								"mysqld": {
-									"enabled": "true",
-									"ensureRunning": "false"
-								},
 								"nginx": {
 									"enabled": "true",
 									"ensureRunning": "false",

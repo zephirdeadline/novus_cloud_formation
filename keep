@@ -1,0 +1,127 @@
+					"/usr/share/nginx/html/index.html": {
+								"content": {
+									"Fn::Join": [
+										"",
+										[
+											"<html>\n",
+											"  <head>\n",
+											"    <title>AWS CloudFormation PHP Sample</title>\n",
+											"    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\">\n",
+											"  </head>\n",
+											"  <body>\n",
+											"    <h1>Hello world</h1>\n",
+											"    <p/>\n",
+											"  </body>\n",
+											"</html>\n"
+										]
+									]
+								},
+								"mode": "000777",
+								"owner": "root",
+								"group": "root"
+							},
+							"/tmp/nginx/default.conf": {
+								"content": {
+									"Fn::Join": [
+										"",
+										[
+											"server {\n",
+											"listen 80;\n",
+											"root /usr/share/nginx/html;\n",
+											"charset utf-8;\n",
+											"location / {\n",
+											"try_files $uri $uri/ =404;\n",
+											"}\n",
+											"}\n"
+										]
+									]
+								},
+								"mode": "000755",
+								"owner": "root",
+								"group": "root"
+							},
+							"/tmp/nginx/root.conf": {
+								"content": {
+									"Fn::Join": [
+										"",
+										[
+											"user nginx;\n",
+											"worker_processes auto;\n",
+											"error_log /var/log/nginx/error.log;\n",
+											"pid /var/run/nginx.pid;\n",
+											"include /usr/share/nginx/modules/*.conf;\n",
+											"events {\n",
+											"worker_connections 1024;\n",
+											"}\n",
+											"http {\n",
+											"access_log  /var/log/nginx/access.log;\n",
+											"sendfile            on;\n",
+											"tcp_nopush          on;\n",
+											"tcp_nodelay         on;\n",
+											"keepalive_timeout   65;\n",
+											"types_hash_max_size 2048;\n",
+											"include             /etc/nginx/mime.types;\n",
+											"default_type        application/octet-stream;\n",
+											"include /etc/nginx/conf.d/*.conf;\n",
+											"index   index.html index.htm;\n",
+											"}\n"
+										]
+									]
+								},
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							},
+							"/tmp/setup.mysql": {
+								"content": {
+									"Fn::Join": [
+										"",
+										[
+											"CREATE DATABASE ",
+											{
+												"Ref": "DBName"
+											},
+											";\n",
+											"GRANT ALL ON ",
+											{
+												"Ref": "DBName"
+											},
+											".* TO '",
+											{
+												"Ref": "DBUser"
+											},
+											"'@localhost IDENTIFIED BY '",
+											{
+												"Ref": "DBPassword"
+											},
+											"';\n"
+										]
+									]
+								},
+								"mode": "000400",
+								"owner": "root",
+								"group": "root"
+							},
+							"/etc/cfn/cfn-hup.conf": {
+								"content": {
+									"Fn::Join": [
+										"",
+										[
+											"[main]\n",
+											"stack=",
+											{
+												"Ref": "AWS::StackId"
+											},
+											"\n",
+											"region=",
+											{
+												"Ref": "AWS::Region"
+											},
+											"\n"
+										]
+									]
+								},
+								"mode": "000400",
+								"owner": "root",
+								"group": "root"
+							},
