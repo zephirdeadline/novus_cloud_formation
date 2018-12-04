@@ -96,7 +96,8 @@
                 "python36": [],
                 "python36-devel": [],
                 "python36-libs": [],
-                "python36-tools": []
+				"python36-tools": [],
+				"gcc": []
                 
 							},
               "pip-3.6": {
