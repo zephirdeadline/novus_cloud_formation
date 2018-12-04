@@ -29,4 +29,4 @@ echo "/tmp/mytrala7"
 
 # Restart services
 service nginx restart
-service uwsgi restart
+#service uwsgi restart
