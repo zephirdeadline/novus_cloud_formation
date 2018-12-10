@@ -1,7 +1,7 @@
 {
     "AWSTemplateFormatVersion" : "2010-09-09",
   
-    "Description" : "AWS CloudFormation Sample Template AutoScalingMultiAZWithNotifications: Create a multi-az, load balanced and Auto Scaled sample web site running on an Apache Web Server. The application is configured to span all Availability Zones in the region and is Auto-Scaled based on the CPU utilization of the web servers. Notifications will be sent to the operator email address on scaling events. The instances are load balanced with a simple health check against the default web page. **WARNING** This template creates one or more Amazon EC2 instances and an Elastic Load Balancer. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Description" : "Novus project template cloud formation",
   
     "Parameters" : {
       "InstanceType" : {
@@ -12,13 +12,6 @@
           "t2.micro"
         ],
         "ConstraintDescription" : "must be a valid EC2 instance type."
-      },
-  
-      "OperatorEMail": {
-        "Description": "EMail address to notify if there are any scaling operations",
-        "Type": "String",
-        "AllowedPattern": "([a-zA-Z0-9_\\-\\.]+)@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.)|(([a-zA-Z0-9\\-]+\\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\\]?)",
-        "ConstraintDescription": "must be a valid email address."
       },
   
       "KeyName" : {
@@ -93,7 +86,7 @@
               "files" : {
                 "/var/www/html/index.html" : {
                   "content" : { "Fn::Join" : ["\n", [
-                    "<img src=\"", {"Fn::FindInMap" : ["Region2Examples", {"Ref" : "AWS::Region"}, "Examples"]}, "/cloudformation_graphic.png\" alt=\"AWS CloudFormation Logo\"/>",
+                    "<img src=\"cloudformation_graphic.png\" alt=\"AWS CloudFormation Logo\"/>",
                     "<h1>Congratulations, you have successfully launched the AWS CloudFormation sample.</h1>"
                   ]]},
                   "mode"    : "000644",
