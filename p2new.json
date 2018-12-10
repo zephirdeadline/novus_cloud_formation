@@ -398,7 +398,26 @@
 					}
 				]
 			}
-		}
+		},
+		"WebServerGroup" : {
+			"Type" : "AWS::AutoScaling::AutoScalingGroup",
+			"Properties" : {
+			   "AvailabilityZones" : { "Fn::GetAZs" : "" },
+			   "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
+			   "MinSize" : "1",
+			   "MaxSize" : "3",
+			   "LoadBalancerNames" : [ { "Ref" : "ElasticLoadBalancer" } ],
+			   "MetricsCollection": [
+				  {
+					 "Granularity": "1Minute",
+					 "Metrics": [
+						"GroupMinSize",
+						"GroupMaxSize"
+					 ]
+				  }
+			   ]
+			}
+		 }
 	},
 	"Outputs": {
 		"WebsiteURL": {
