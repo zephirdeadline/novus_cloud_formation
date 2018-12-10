@@ -353,6 +353,7 @@
 								"cp /tmp/nginx/root.conf /etc/nginx/nginx.conf\n",
 								"/usr/local/bin/uwsgi --ini /etc/nginx/back.ini &\n",
 								"service nginx restart\n",
+								"chmod 777 /tmp/back.sock &\n",
 								"# Signal the status from cfn-init\n",
 								"/opt/aws/bin/cfn-signal -e $? ",
 								"         --stack ",
