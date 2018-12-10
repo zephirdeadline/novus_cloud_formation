@@ -342,7 +342,7 @@
 								"mkdir -p /usr/share/nginx/back\n",
 								"git clone https://github.com/zephirdeadline/novus_cloud_formation.git /tmp/test\n",
 								"git clone https://t@github.com/corenting/NovusBack.git /usr/share/nginx/back/\n",
-								"git clone https://t@github.com/corenting/NovusFront.git /usr/share/nginx/\n",
+								"git clone https://t@github.com/corenting/NovusFront.git /usr/share/nginx/front\n",
 								"cd /tmp/test\n",
 								"chmod +x init.sh\n",
 								"./init.sh\n",
