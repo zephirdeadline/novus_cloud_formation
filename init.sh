@@ -10,7 +10,6 @@
 cp nginx_root_conf.conf /etc/nginx/nginx.conf
 
 # nginx novus conf
-rm /etc/nginx/conf.d/default.conf
 cp novus.conf /etc/nginx/conf.d/novus.conf
 cp back.ini /etc/nginx/
 
