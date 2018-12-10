@@ -13,3 +13,6 @@ cp nginx_root_conf.conf /etc/nginx/nginx.conf
 #rm /etc/nginx/conf.d/default.conf
 cp novus.conf /etc/nginx/conf.d/novus.conf
 cp back.ini /etc/nginx/
+
+# Python install packages
+python3 -m pip install -r /usr/share/nginx/back/requirements.txt
