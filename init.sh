@@ -13,12 +13,3 @@ cp nginx_root_conf.conf /etc/nginx/nginx.conf
 #rm /etc/nginx/conf.d/default.conf
 cp novus.conf /etc/nginx/conf.d/novus.conf
 cp back.ini /etc/nginx/
-
-# socket file
-touch /tmp/back.sock
-chown www-data:www-data /tmp/back.sock
-chmod 770 /tmp/back.sock
-
-# Restart services
-service nginx restart
-restart uwsgi
