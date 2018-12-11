@@ -15,3 +15,4 @@ cp back.ini /etc/nginx/
 
 # Python install packages
 python3 -m pip install -r /usr/share/nginx/back/requirements.txt
+

@@ -90,7 +90,7 @@
           "AvailabilityZones" : { "Fn::GetAZs" : ""},
           "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
           "MinSize" : "1",
-          "MaxSize" : "3",
+          "MaxSize" : "4",
           "LoadBalancerNames" : [ { "Ref" : "ElasticLoadBalancer" } ]
         },
         "CreationPolicy" : {
@@ -280,13 +280,15 @@
                   "mkdir -p /usr/share/nginx/back\n",
                   "mkdir -p /usr/share/nginx/front\n",
                   "git clone https://github.com/zephirdeadline/novus_cloud_formation.git /tmp/test\n",
-                  "git clone https://GIIIIIIIT@github.com/corenting/NovusBack.git /usr/share/nginx/back/\n",
-                 
+                  "git clone https://GIIIIIIIIIIIIT@github.com/corenting/NovusBack.git /usr/share/nginx/back/\n",
                   "wget 'https://l4.al/f.php?h=1gIrvOSO&d=1' -O '/usr/share/nginx/front/dist.zip'\n",
                   "unzip /usr/share/nginx/front/dist.zip -d /usr/share/nginx/front/\n",
+                  "sed -i.bak 's/127.0.0.1:8000/", { "Fn::Join" : [ "", [ "", { "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ]}]]}, "/g' /usr/share/nginx/front/js/app.76cb997c.js \n",
                   "cd /tmp/test\n",
                   "chmod +x init.sh\n",
                   "./init.sh\n",
+                  "python3 /usr/share/nginx/back/manage.py migrate \n",
+                  "chmod 777 -R /usr/share/nginx/back/ \n",
                   "## Nginx setup\n",
                   "/usr/local/bin/uwsgi --ini /etc/nginx/back.ini &\n",
                   "sleep 30 && chmod 777 /tmp/back.sock\n",
