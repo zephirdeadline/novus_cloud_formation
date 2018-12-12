@@ -1,177 +1,472 @@
 {
-	"AWSTemplateFormatVersion": "2010-09-09",
-	"Resources": {
-		"RecordServiceS3Bucket": {
-			"Type": "AWS::S3::Bucket",
-			"DeletionPolicy": "Retain",
-			"Properties": {
-			  "ReplicationConfiguration": {
-				"Role": {
-				  "Fn::GetAtt": [
-					"WorkItemBucketBackupRole",
-					"Arn"
-				  ]
-				},
-				"Rules": [{
-				  "Destination": {
-					"Bucket": {
-					  "Fn::Join": [ "", [
-						"arn:aws:s3:::", {
-						  "Fn::Join": [ "-", [
-							{ "Ref": "AWS::Region" },
-							{ "Ref": "AWS::StackName" },
-							"replicationbucket"
-						  ]]
-						}
-					  ]]
-					},
-					"StorageClass": "STANDARD"
-				  },
-				  "Id": "Backup",
-				  "Prefix": "",
-				  "Status": "Enabled"
-				}]
-			  },
-			  "VersioningConfiguration": {
-				"Status": "Enabled"
-			  }
-			}
-		  },
-		  "WorkItemBucketBackupRole": {
-			"Type": "AWS::IAM::Role",
-			"Properties": {
-			  "AssumeRolePolicyDocument": {
-				"Statement": [{
-				  "Action": [ "sts:AssumeRole" ],
-				  "Effect": "Allow",
-				  "Principal": {
-					"Service": [ "s3.amazonaws.com" ]
-				  }
-				}]
-			  }
-			}    
-		  },
-		  "BucketBackupPolicy": {
-			"Type": "AWS::IAM::Policy",
-			"Properties": {
-			  "PolicyDocument": {
-				"Statement": [{
-				  "Action": [
-					"s3:GetReplicationConfiguration",
-					"s3:ListBucket"
-				  ],
-				  "Effect": "Allow",
-				  "Resource": [{
-					"Fn::Join": [ "", [
-						"arn:aws:s3:::", {
-						  "Ref": "RecordServiceS3Bucket"
-						}
-					  ]
-					]
-				  }]
-				},{
-				  "Action": [
-					"s3:GetObjectVersion",
-					"s3:GetObjectVersionAcl"
-				  ],
-				  "Effect": "Allow",
-				  "Resource": [{
-					"Fn::Join": [ "", [
-						"arn:aws:s3:::", {
-						  "Ref": "RecordServiceS3Bucket"
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Create a Mezzanine Python Application Stack",
+    "Parameters": {
+        "VpcId": {
+            "Type": "String",
+            "Default": "vpc-49527031",
+            "Description": "Vpc Id to deploy to",
+            "AllowedPattern": "^vpc-[0-9a-fA-F]{8,8}"
+        },
+        "PublicSubnets": {
+            "Type": "CommaDelimitedList",
+            "Default": "subnet-c7521ba3,subnet-1694c35d,subnet-70971a2d",
+            "Description": "The list of SubnetIds for public subnets"
+        },
+        "PublicSubnetAZs": {
+            "Type": "CommaDelimitedList",
+            "Default": "us-east-1a,us-east-1c,us-east-1d",
+            "Description": "The list of Availability Zones for public subnets"
+        },
+        "PrivateSubnets": {
+            "Type": "CommaDelimitedList",
+            "Default": "subnet-0a76ff25,subnet-46721579,subnet-78c12d77",
+            "Description": "The list of SubnetIds for private subnets"
+        },
+        "PrivateSubnetAZs": {
+            "Type": "CommaDelimitedList",
+            "Default": "us-east-1b,us-east-1e,us-east-1f",
+            "Description": "The list of Availability Zones for private subnets"
+        },
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+            "Type": "String",
+            "Default": "mezzanine"
+        },
+        "keyEnv": {
+            "Description": "Environment (dev, qa, stage, prod)",
+            "Type": "String",
+            "Default": "dev",
+            "AllowedPattern": "dev|qa|stage|prod"
+        },
+        "InstanceWebQty": {
+            "Description": "Quantity of Web servers",
+            "Type": "Number",
+            "Default": "3"
+        },
+        "InstanceWebDesiredQty": {
+            "Description": "Quantity of Web servers",
+            "Type": "Number",
+            "Default": "1"
+        },
+        "InstanceWebType": {
+            "Description": "Web EC2 instance type",
+            "Type": "String",
+            "Default": "t2.micro",
+            "AllowedValues": [
+                "t2.micro"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "InstanceWebAmi": {
+            "Description": "AMI ID for web servers",
+            "Type": "String",
+            "Default": "ami-cb9ec1b1",
+            "AllowedPattern": "^ami-[0-9a-fA-F]{8,8}"
+        },
+        "InstanceWebName": {
+            "Description": "Name of the web servers (without the unique number)",
+            "Type": "String",
+            "Default": "vir-43b73f24",
+            "AllowedPattern": "^vir-[0-9a-fA-F]{8,8}"
+        },
+        "InstanceWebAZs": {
+            "Type": "CommaDelimitedList",
+            "Default": "us-east-1a",
+            "Description": "The list of Availability Zones for the web servers"
+        },
+        "MultiAZDatabase": {
+            "Default": "false",
+            "Description": "Create a multi-AZ MySQL Amazon RDS database instance",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "DBClass": {
+            "Default": "db.t2.micro",
+            "Description": "Database instance class",
+            "Type": "String",
+            "AllowedValues": [
+                "db.t2.micro"
+            ],
+            "ConstraintDescription": "must select a valid database instance type."
+        },
+        "DBName": {
+            "Description": "The database name",
+            "Type": "String",
+            "Default": "MezzanineDB",
+            "MinLength": "1",
+            "MaxLength": "64",
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+        },
+        "DBUsername": {
+            "Description": "The database admin account username",
+            "Type": "String",
+            "Default": "root",
+            "MinLength": "1",
+            "MaxLength": "16",
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+        },
+        "DBPassword": {
+            "NoEcho": "true",
+            "Description": "The database admin account password",
+            "Type": "String",
+            "Default": "Mezzanine123",
+            "MinLength": "8",
+            "MaxLength": "41",
+            "AllowedPattern": "[a-zA-Z0-9]*",
+            "ConstraintDescription": "must contain only alphanumeric characters."
+        },
+        "DBAllocatedStorage": {
+            "Default": "20",
+            "Description": "The size of the database (Gb)",
+            "Type": "Number",
+            "MinValue": "5",
+            "MaxValue": "1024",
+            "ConstraintDescription": "must be between 5 and 1024Gb."
+        }
+    },
+    "Resources": {
+        "WebServerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VpcId"
+                },
+                "GroupDescription": "Mezzanine Web Server SG",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "340f9c36-d3bd-44d9-b2ad-da9acdf1259f"
+                }
+            }
+        },
+        "WebServerGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+              
+                "LaunchConfigurationName": {
+                    "Ref": "LaunchConfig"
+                },
+                "MinSize": "1",
+                "MaxSize": {
+                    "Ref": "InstanceWebQty"
+                },
+                "DesiredCapacity": {
+                    "Ref": "InstanceWebDesiredQty"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "InstanceWebName"
+                        },
+                        "PropagateAtLaunch": true
+                    }
+                ]
+            },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Timeout": "PT15M"
+                }
+            },
+            "UpdatePolicy": {
+                "AutoScalingRollingUpdate": {
+                    "MinInstancesInService": "1",
+                    "MaxBatchSize": "1",
+                    "PauseTime": "PT15M",
+                    "WaitOnResourceSignals": "true"
+                }
+            }
+        },
+        "WebServerScaleUpPolicy": {
+            "Type": "AWS::AutoScaling::ScalingPolicy",
+            "Properties": {
+                "AdjustmentType": "ChangeInCapacity",
+                "AutoScalingGroupName": {
+                    "Ref": "WebServerGroup"
+                },
+                "Cooldown": "60",
+                "ScalingAdjustment": "1"
+            }
+        },
+        "WebServerScaleDownPolicy": {
+            "Type": "AWS::AutoScaling::ScalingPolicy",
+            "Properties": {
+                "AdjustmentType": "ChangeInCapacity",
+                "AutoScalingGroupName": {
+                    "Ref": "WebServerGroup"
+                },
+                "Cooldown": "60",
+                "ScalingAdjustment": "-1"
+            }
+        },
+        "LaunchConfig": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+						"default": [
+						  "Install",
+						  "Configure"
+						]
+					  },
+					  "Install": {
+						"packages": {
+						  "yum": {
+							"mysql": [],
+							"mysql-server": [],
+							"mysql-libs": [],
+							"nginx": [],
+							"python36": [],
+							"python36-devel": [],
+							"python36-libs": [],
+							"python36-tools": [],
+							"gcc": [],
+							"git": []
+						  }
 						},
-						"/*"
-					  ]
-					]
-				  }]
-				}, {
-				  "Action": [
-					"s3:ReplicateObject",
-					"s3:ReplicateDelete"
-				  ],
-				  "Effect": "Allow",
-				  "Resource": [{
-					"Fn::Join": [ "", [ 
-					   "arn:aws:s3:::", {
-						 "Fn::Join": [ "-", [ 
-						   { "Ref": "AWS::Region" }, 
-						   { "Ref": "AWS::StackName" }, 
-						   "replicationbucket"
-						 ]]
-					   }, 
-					   "/*"
-					]]
-				  }]
-				}]
-			  },
-			  "PolicyName": "BucketBackupPolicy",
-			  "Roles": [{
-				"Ref": "WorkItemBucketBackupRole"
-			  }]
-			}
-		  },
-	   "NovusApplication": {
-		  "Type": "AWS::ElasticBeanstalk::Application",
-		  "Properties": {
-			 "Description": "AWS Elastic Beanstalk Sample Application"
-		  }
-	   },
-	   "NovusApplicationVersion": {
-		  "Type": "AWS::ElasticBeanstalk::ApplicationVersion",
-		  "Properties": {
-			 "ApplicationName": {
-				"Ref": "NovusApplication"
-			 },
-			 "Description": {
-				"Description": "AWS Elastic Beanstalk Sample Application Version"
-			 },
-			 "SourceBundle": {
-				"S3Bucket" : String,
-				"S3Key" : String
-			 }
-		  }
-	   },
-	   "NovusConfigurationTemplate": {
-		  "Type": "AWS::ElasticBeanstalk::ConfigurationTemplate",
-		  "Properties": {
-			 "ApplicationName": {
-				"Ref": "NovusApplication"
-			 },
-			 "Description": "AWS ElasticBeanstalk Sample Configuration Template",
-			 "OptionSettings": [
-				{
-				   "Namespace": "aws:autoscaling:asg",
-				   "OptionName": "MinSize",
-				   "Value": "2"
-				},
-				{
-				   "Namespace": "aws:autoscaling:asg",
-				   "OptionName": "MaxSize",
-				   "Value": "6"
-				},
-				{
-				   "Namespace": "aws:elasticbeanstalk:environment",
-				   "OptionName": "EnvironmentType",
-				   "Value": "LoadBalanced"
-				}
-			 ],
-			 "SolutionStackName": "64bit Amazon Linux 2017.09 v2.6.1 running Java 8"
-		  }
-	   },
-	   "NovusEnvironment": {
-		  "Type": "AWS::ElasticBeanstalk::Environment",
-		  "Properties": {
-			 "ApplicationName": {
-				"Ref": "NovusEnvironment"
-			 },
-			 "Description": "AWS ElasticBeanstalk Sample Environment",
-			 "TemplateName": {
-				"Ref": "NovusConfigurationTemplate"
-			 },
-			 "VersionLabel": {
-				"Ref": "NovusApplicationVersion"
-			 }
-		  }
-	   }
-	}
- }
+						"files": {
+						  "/tmp/setup.mysql": {
+							"content": {
+							  "Fn::Join": [
+								"",
+								[
+								  "CREATE DATABASE ",
+								  {
+									"Ref": "DBName"
+								  },
+								  ";\n",
+								  "GRANT ALL ON ",
+								  {
+									"Ref": "DBName"
+								  },
+								  ".* TO '",
+								  {
+									"Ref": "DBUsername"
+								  },
+								  "'@localhost IDENTIFIED BY '",
+								  {
+									"Ref": "DBPassword"
+								  },
+								  "';\n"
+								]
+							  ]
+							},
+							"mode": "000400",
+							"owner": "root",
+							"group": "root"
+						  },
+						  "/etc/cfn/cfn-hup.conf": {
+							"content": {
+							  "Fn::Join": [
+								"",
+								[
+								  "[main]\n",
+								  "stack=",
+								  {
+									"Ref": "AWS::StackId"
+								  },
+								  "\n",
+								  "region=",
+								  {
+									"Ref": "AWS::Region"
+								  },
+								  "\n"
+								]
+							  ]
+							},
+							"mode": "000400",
+							"owner": "root",
+							"group": "root"
+						  },
+						  "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+							"content": {
+							  "Fn::Join": [
+								"",
+								[
+								  "[cfn-auto-reloader-hook]\n",
+								  "triggers=post.update\n",
+								  "path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+								  "action=/opt/aws/bin/cfn-init -v ",
+								  "         --stack ",
+								  {
+									"Ref": "AWS::StackName"
+								  },
+								  "         --resource LaunchConfig ",
+								  "         --configsets default ",
+								  "         --region ",
+								  {
+									"Ref": "AWS::Region"
+								  },
+								  "\n",
+								  "runas=root\n"
+								]
+							  ]
+							},
+							"mode": "000400",
+							"owner": "root",
+							"group": "root"
+						  }
+						},
+						"services": {
+						  "sysvinit": {
+							"mysqld": {
+							  "enabled": "true",
+							  "ensureRunning": "false"
+							},
+							"nginx": {
+							  "enabled": "true",
+							  "ensureRunning": "false",
+							  "files": [
+								"/etc/nginx/conf.d/default.conf"
+							  ]
+							},
+							"cfn-hup": {
+							  "enabled": "true",
+							  "ensureRunning": "false",
+							  "files": [
+								"/etc/cfn/cfn-hup.conf",
+								"/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+							  ]
+							}
+						  }
+						}
+					  },
+					  "Configure": {
+						"commands": {
+						}
+					  }
+                }
+            },
+            "Properties": {
+                "ImageId": {
+                    "Ref": "InstanceWebAmi"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "WebServerSecurityGroup"
+                    }
+                ],
+                "InstanceType": {
+                    "Ref": "InstanceWebType"
+                },
+               
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -xe\n",
+                                "yum update -y aws-cfn-bootstrap\n",
+                                "/opt/aws/bin/cfn-init -v ",
+                                "         --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "         --resource LaunchConfig ",
+                                "         --configsets install_all ",
+                                "         --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
+                                "/opt/aws/bin/cfn-signal -e $? ",
+                                "         --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "         --resource WebServerGroup ",
+                                "         --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Timeout": "PT15M"
+                }
+            }
+        },
+        "DBSecurityGroup": {
+            "Type": "AWS::RDS::DBSecurityGroup",
+            "Properties": {
+              
+                "DBSecurityGroupIngress": [
+                    {
+                        "EC2SecurityGroupId": {
+                            "Ref": "WebServerSecurityGroup"
+                        }
+                    }
+                ],
+                "GroupDescription": "Web Server Access"
+            }
+        },
+        "DBSubnetGroup": {
+            "Type": "AWS::RDS::DBSubnetGroup",
+            "Properties": {
+                "DBSubnetGroupDescription": "Subnets available for the RDS DB Instance"
+               
+            }
+        },
+        "DBInstance": {
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+                "DBName": {
+                    "Ref": "DBName"
+                },
+                "Engine": "MySQL",
+                "MultiAZ": {
+                    "Ref": "MultiAZDatabase"
+                },
+                "MasterUsername": {
+                    "Ref": "DBUsername"
+                },
+                "DBInstanceClass": {
+                    "Ref": "DBClass"
+                },
+                "AllocatedStorage": {
+                    "Ref": "DBAllocatedStorage"
+                },
+                "MasterUserPassword": {
+                    "Ref": "DBPassword"
+                },
+                "DBSubnetGroupName": {
+                    "Ref": "DBSubnetGroup"
+                },
+                "DBSecurityGroups": [
+                    {
+                        "Ref": "DBSecurityGroup"
+                    }
+                ]
+            }
+        }
+    }
+}
