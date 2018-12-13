@@ -1,0 +1,140 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Resources": {
+        "novusApplication": {
+            "Type": "AWS::ElasticBeanstalk::Application",
+            "Properties": {
+                "Description": "AWS Elastic Beanstalk Novus Application"
+            }
+        },
+        "novusApplicationVersion": {
+            "Type": "AWS::ElasticBeanstalk::ApplicationVersion",
+            "Properties": {
+                "ApplicationName": {
+                    "Ref": "novusApplication"
+                },
+                "Description": "AWS ElasticBeanstalk Novus Application Version",
+                "SourceBundle": {
+                    "S3Bucket": "cf-templates-zo6zj6m0h2kr-us-east-1",
+                    "S3Key": "NovusBack-master.zip"
+                }
+            }
+        },
+        "novusConfigurationTemplate": {
+            "Type": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+            "Properties": {
+                "ApplicationName": {
+                    "Ref": "novusApplication"
+                },
+                "Description": "AWS ElasticBeanstalk Novus Configuration Template",
+                "OptionSettings": [
+                    {
+                        "Namespace": "aws:autoscaling:asg",
+                        "OptionName": "MinSize",
+                        "Value": "2"
+                    },
+                    {
+                        "Namespace": "aws:autoscaling:asg",
+                        "OptionName": "MaxSize",
+                        "Value": "6"
+                    },
+                    {
+                        "Namespace": "aws:elasticbeanstalk:environment",
+                        "OptionName": "EnvironmentType",
+                        "Value": "LoadBalanced"
+                    },
+                    {
+                        "Namespace": "aws:rds:dbinstance",
+                        "OptionName": "DBPassword",
+                        "Value": "Password"
+                    },
+                    {
+                        "Namespace": "aws:rds:dbinstance",
+                        "OptionName": "DBEngine",
+                        "Value": "mysql"
+                    },
+                    {
+                        "Namespace": "aws:rds:dbinstance",
+                        "OptionName": "DBUser",
+                        "Value": "userdb"
+                    }
+                ],
+                "SolutionStackName": "64bit Amazon Linux 2018.03 v2.7.6 running Python 3.6"
+            }
+        },
+        "novusEnvironment": {
+            "Type": "AWS::ElasticBeanstalk::Environment",
+            "Properties": {
+                "ApplicationName": {
+                    "Ref": "novusApplication"
+                },
+                "Description": "AWS ElasticBeanstalk Novus Environment",
+                "TemplateName": {
+                    "Ref": "novusConfigurationTemplate"
+                },
+                "VersionLabel": {
+                    "Ref": "novusApplicationVersion"
+                }
+            }
+        },
+
+
+
+
+
+        "S3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "PublicRead",
+                "WebsiteConfiguration": {
+                    "IndexDocument": "index.html",
+                    "ErrorDocument": "error.html"
+                }
+            },
+            "DeletionPolicy": "Retain"
+        },
+        "BucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Id": "MyPolicy",
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "PublicReadForGetBucketObjects",
+                            "Effect": "Allow",
+                            "Principal": "*",
+                            "Action": "s3:GetObject",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:aws:s3:::",
+                                        {
+                                            "Ref": "S3Bucket"
+                                        },
+                                        "/*"
+                                    ]
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Bucket": {
+                    "Ref": "S3Bucket"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "WebsiteURL": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "S3Bucket",
+                    "WebsiteURL"
+                ]
+            },
+            "Description": "URL for website hosted on S3"
+        }
+    }
+}

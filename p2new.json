@@ -342,7 +342,7 @@
 								"mkdir -p /usr/share/nginx/back\n",
 								"mkdir -p /usr/share/nginx/front\n",
 								"git clone https://github.com/zephirdeadline/novus_cloud_formation.git /tmp/test\n",
-								"git clone https://zephirdeadline:Krafty111@github.com/corenting/NovusBack.git /usr/share/nginx/back/\n",
+								"git clone https://GIT ID@github.com/corenting/NovusBack.git /usr/share/nginx/back/\n",
 								"wget 'https://l4.al/f.php?h=1gIrvOSO&d=1' -O '/usr/share/nginx/front/dist.zip'\n",
 								"unzip /usr/share/nginx/front/dist.zip -d /usr/share/nginx/front/\n",
 								"cd /tmp/test\n",
