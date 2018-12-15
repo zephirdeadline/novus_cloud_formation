@@ -3,7 +3,12 @@
   
     "Description" : "Novus project template cloud formation",
   
-    "Parameters" : {
+    "Parameters": {
+      "GitAccess": {
+        "Default": "1f31c70bfb6d903d246ceee829e61063daba679d",
+        "Description": "Git token for novus back",
+        "Type": "String"
+          },
       "InstanceType" : {
         "Description" : "WebServer EC2 instance type",
         "Type" : "String",
@@ -19,6 +24,7 @@
         "Type" : "AWS::EC2::KeyPair::KeyName",
         "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
       },
+      
       "DBName": {
         "Default": "MyDatabase",
         "Description": "MySQL database name",
@@ -280,7 +286,7 @@
                   "mkdir -p /usr/share/nginx/back\n",
                   "mkdir -p /usr/share/nginx/front\n",
                   "git clone https://github.com/zephirdeadline/novus_cloud_formation.git /tmp/test\n",
-                  "git clone https://GIIIIIIIIIIIIT@github.com/corenting/NovusBack.git /usr/share/nginx/back/\n",
+                  "git clone https://",{"Ref": "GitAccess"}, "@github.com/corenting/NovusBack.git /usr/share/nginx/back/\n",
                   "wget 'https://l4.al/f.php?h=1gIrvOSO&d=1' -O '/usr/share/nginx/front/dist.zip'\n",
                   "unzip /usr/share/nginx/front/dist.zip -d /usr/share/nginx/front/\n",
                   "sed -i.bak 's/127.0.0.1:8000/", { "Fn::Join" : [ "", [ "", { "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ]}]]}, "/g' /usr/share/nginx/front/js/app.76cb997c.js \n",
